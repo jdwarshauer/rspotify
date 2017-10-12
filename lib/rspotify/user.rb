@@ -38,6 +38,8 @@ module RSpotify
       response = RestClient.post(TOKEN_URI, request_body, RSpotify.send(:auth_header))
       response = JSON.parse(response)
       @@users_credentials[user_id]['token'] = response['access_token']
+      User.find(user_id).update access_token: response['access_token']
+
     rescue RestClient::BadRequest => e
       raise e if e.response !~ /Refresh token revoked/
     end
@@ -126,9 +128,8 @@ module RSpotify
     # User must be a premium subscriber for this feature to work.
     def play_track(song_uri)
       url = "me/player/play"
-      verb = 'put'
       params = {"uris": [song_uri]}
-      response = User.oauth_put(@id, url, params.to_json)
+      User.oauth_put(@id, url, params.to_json)
     end
 
     # Get the current user’s recently played tracks. Requires the *user-read-recently-played* scope.
