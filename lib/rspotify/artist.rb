@@ -50,6 +50,7 @@ module RSpotify
       @name       = options['name']
       @popularity = options['popularity']
       @top_tracks = {}
+      @spotify_id = @id
 
       super(options)
     end

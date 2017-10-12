@@ -38,7 +38,6 @@ module RSpotify
       response = RestClient.post(TOKEN_URI, request_body, RSpotify.send(:auth_header))
       response = JSON.parse(response)
       @@users_credentials[user_id]['token'] = response['access_token']
-      User.find(user_id).update access_token: response['access_token']
 
     rescue RestClient::BadRequest => e
       raise e if e.response !~ /Refresh token revoked/
