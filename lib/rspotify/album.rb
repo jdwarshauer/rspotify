@@ -7,6 +7,7 @@ module RSpotify
   # @attr [Hash]          external_ids           Known external IDs for the album
   # @attr [Array<String>] genres                 A list of the genres used to classify the album. If not yet classified, the array is empty
   # @attr [Array<Hash>]   images                 The cover art for the album in various sizes, widest first
+  # @attr [String]        label                  The label for the album
   # @attr [String]        name                   The name of the album
   # @attr [Integer]       popularity             The popularity of the album. The value will be between 0 and 100, with 100 being the most popular
   # @attr [String]        release_date           The date the album was first released, for example "1981-12-15". Depending on the precision, it might be shown as "1981" or "1981-12"
@@ -17,6 +18,7 @@ module RSpotify
     # Returns Album object(s) with id(s) provided
     #
     # @param ids [String, Array] Maximum: 20 IDs
+    # @param market [String] Optional. An {http://en.wikipedia.org/wiki/ISO_3166-1_alpha-2 ISO 3166-1 alpha-2 country code}.
     # @return [Album, Array<Album>]
     #
     # @example
@@ -28,8 +30,8 @@ module RSpotify
     #           albums = RSpotify::Album.find(ids)
     #           albums.class       #=> Array
     #           albums.first.class #=> RSpotify::Album
-    def self.find(ids)
-      super(ids, 'album')
+    def self.find(ids, market: nil)
+      super(ids, 'album', market: market)
     end
 
     # Get a list of new album releases featured in Spotify (shown, for example, on a Spotify player’s “Browse” tab).
@@ -76,6 +78,7 @@ module RSpotify
       @external_ids           = options['external_ids']
       @genres                 = options['genres']
       @images                 = options['images']
+      @label                  = options['label']
       @name                   = options['name']
       @popularity             = options['popularity']
       @release_date           = options['release_date']
@@ -99,18 +102,20 @@ module RSpotify
     #
     # @param limit  [Integer] Maximum number of tracks to return. Maximum: 50. Default: 50.
     # @param offset [Integer] The index of the first track to return. Use with limit to get the next set of objects. Default: 0.
+    # @param market [String] Optional. An {http://en.wikipedia.org/wiki/ISO_3166-1_alpha-2 ISO 3166-1 alpha-2 country code}. Default: nil.
     # @return [Array<Track>]
     #
     # @example
     #           album = RSpotify::Album.find('41vPD50kQ7JeamkxQW7Vuy')
     #           album.tracks.first.name #=> "Do I Wanna Know?"
-    def tracks(limit: 50, offset: 0)
+    def tracks(limit: 50, offset: 0, market: nil)
       last_track = offset + limit - 1
       if @tracks_cache && last_track < 50 && !RSpotify.raw_response
         return @tracks_cache[offset..last_track]
       end
 
       url = "albums/#{@id}/tracks?limit=#{limit}&offset=#{offset}"
+      url << "&market=#{market}" if market
       response = RSpotify.get(url)
       json = RSpotify.raw_response ? JSON.parse(response) : response
 

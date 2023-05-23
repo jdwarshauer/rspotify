@@ -11,6 +11,7 @@ module RSpotify
     #
     # @param ids [String, Array]
     # @param type [String]
+    # @param market [String] Optional. An {http://en.wikipedia.org/wiki/ISO_3166-1_alpha-2 ISO 3166-1 alpha-2 country code}.
     # @return [Album, Artist, Track, User, Array<Album>, Array<Artist>, Array<Track>]
     #
     # @example
@@ -22,24 +23,24 @@ module RSpotify
     #           tracks = RSpotify::Base.find(ids, 'track')
     #           tracks.class       #=> Array
     #           tracks.first.class #=> RSpotify::Track
-    def self.find(ids, type)
+    def self.find(ids, type, market: nil)
       case ids
       when Array
         if type == 'user'
           warn 'Spotify API does not support finding several users simultaneously'
           return false
         end
-        limit = (type == 'album' ? 20 : 50)
-        find_many(ids, type)
+        find_many(ids, type, market: market)
       when String
         id = ids
-        find_one(id, type)
+        find_one(id, type, market: market)
       end
     end
 
-    def self.find_many(ids, type)
+    def self.find_many(ids, type, market: nil)
       type_class = RSpotify.const_get(type.capitalize)
       path = "#{type}s?ids=#{ids.join ','}"
+      path << "&market=#{market}" if market
 
       response = RSpotify.get path
       return response if RSpotify.raw_response
@@ -47,13 +48,14 @@ module RSpotify
     end
     private_class_method :find_many
 
-    def self.find_one(id, type)
+    def self.find_one(id, type, market: nil)
       type_class = RSpotify.const_get(type.capitalize)
       path = "#{type}s/#{id}"
+      path << "?market=#{market}" if market
 
       response = RSpotify.get path
       return response if RSpotify.raw_response
-      type_class.new response
+      type_class.new response unless response.nil?
     end
     private_class_method :find_one
 
@@ -123,9 +125,9 @@ module RSpotify
 
     # Generate an embed code for an album, artist or track.
     # @param [Hash] options
-    # @option options [Fixnum] :width the width of the frame
-    # @option options [Fixnum] :height the height of the frame
-    # @option options [Fixnum] :frameborder the frameborder of the frame
+    # @option options [Integer] :width the width of the frame
+    # @option options [Integer] :height the height of the frame
+    # @option options [Integer] :frameborder the frameborder of the frame
     # @option options [Boolean] :allowtransparency toggle frame transparency
     # @option options [nil|String|Symbol] :view specific view option for iframe
     # @option options [nil|String|Symbol] :theme specific theme option for iframe
@@ -140,7 +142,7 @@ module RSpotify
         frameborder: 0,
         allowtransparency: true,
         view: nil,
-        theme: nil,
+        theme: nil
       }
       options = default_options.merge(options)
 

@@ -4,9 +4,7 @@ describe RSpotify::Recommendations do
   let(:client_secret) { '155fc038a85840679b55a1822ef36b9b' }
 
   before do
-    VCR.use_cassette('authenticate:client') do
-      RSpotify.authenticate(client_id, client_secret)
-    end
+    authenticate_client
   end
 
   describe 'Recommendations::available_genre_seeds' do
@@ -40,7 +38,7 @@ describe RSpotify::Recommendations do
     it 'generates a list of recommended tracks' do
       tracks = subject.tracks
       expect(tracks.count)                     .to eq(20)
-      expect(tracks.map { |track| track.name }).to include('Bonfire', 'All The Love In The World', 'Splitting The Atom')
+      expect(tracks.map { |track| track.name }).to include('The Music Scene', 'Conditions of My Parole', 'Here Is No Why')
     end
 
     it 'generates a list of recommendation seeds' do

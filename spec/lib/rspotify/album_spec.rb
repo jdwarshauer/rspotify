@@ -11,14 +11,14 @@ describe RSpotify::Album do
 
     it 'should find album with correct attributes' do
       expect(@album.album_type)               .to eq      'album'
-      expect(@album.available_markets)        .to include *%w(AD AT BE BG CA EE ES FR GR MC TW US)
       expect(@album.copyrights)               .to include ({'text' => '2013 Domino Recording Co Ltd', 'type' => 'C'})
       expect(@album.external_ids['upc'])      .to eq      '887828031795'
       expect(@album.external_urls['spotify']) .to eq      'https://open.spotify.com/album/5bU1XKYxHhEwukllT20xtk'
       expect(@album.genres)                   .to be_an   Array
       expect(@album.href)                     .to eq      'https://api.spotify.com/v1/albums/5bU1XKYxHhEwukllT20xtk'
       expect(@album.id)                       .to eq      '5bU1XKYxHhEwukllT20xtk'
-      expect(@album.images)                   .to include ({'height' => 640, 'width' => 640, 'url' => 'https://i.scdn.co/image/4d9ec146e3a257b10634d9a413ef6cc3de325008'})
+      expect(@album.images)                   .to include ({'height' => 640, 'width' => 640, 'url' => 'https://i.scdn.co/image/486391b05384f2299a4c01b7bd8d5b855f20def9'})
+      expect(@album.label)                    .to eq      'Domino Recording Co'
       expect(@album.name)                     .to eq      'AM'
       expect(@album.popularity)               .to be      > 0
       expect(@album.release_date)             .to eq      '2013-09-09'
@@ -43,6 +43,17 @@ describe RSpotify::Album do
       expect(tracks.first)       .to be_an RSpotify::Track
       expect(tracks.map(&:name)) .to include('Do I Wanna Know?', 'R U Mine?', 'Arabella', 'Fireside')
     end
+
+    it 'should find an album with tracks available in the given market' do
+      album = VCR.use_cassette('album:find:5bU1XKYxHhEwukllT20xtk:market:ES') do
+        RSpotify::Album.find('5bU1XKYxHhEwukllT20xtk', market: 'ES')
+      end
+
+      tracks = album.tracks
+      expect(album.id)        .to eq '5bU1XKYxHhEwukllT20xtk'
+      expect(tracks.size)     .to eq 12
+      expect(tracks.first.id) .to eq '5FVd6KXrgO9B3JPmC8OPst'
+    end
   end
 
   describe 'Album::find receiving array of ids' do
@@ -64,6 +75,15 @@ describe RSpotify::Album do
       expect(albums.first.name) .to eq 'The Next Day Extra'
       expect(albums.last.name)  .to eq 'A Beard Of Stars (Deluxe Edition)'
     end
+
+    it 'should find albums with tracks available in the given market' do
+      albums = VCR.use_cassette('album:find:2agWNCZl5Ts9W05mij8EPh:market:ES') do
+        RSpotify::Album.find(['2agWNCZl5Ts9W05mij8EPh'], market: 'ES')
+      end
+
+      expect(albums.first.id)              .to eq '2agWNCZl5Ts9W05mij8EPh'
+      expect(albums.first.tracks.first.id) .to eq '1CFz8ZV88CFLwmggjGrW4c'
+    end
   end
 
   describe 'Album::new_releases' do
@@ -72,9 +92,7 @@ describe RSpotify::Album do
     let(:client_secret) { '155fc038a85840679b55a1822ef36b9b' }
 
     before(:each) do
-    VCR.use_cassette('authenticate:client') do
-        RSpotify.authenticate(client_id, client_secret)
-      end
+      authenticate_client
     end
 
     it 'should find the appropriate new releases' do
@@ -96,20 +114,28 @@ describe RSpotify::Album do
         RSpotify::Album.new_releases(country: 'ES')
       end
       expect(albums.size)        .to eq 20
-      expect(albums.map(&:name)) .to include('Me Olvide de Vivir', 'Amor Futuro')
+      expect(albums.map(&:name)) .to include('Tiempo', 'La Llamada')
     end
   end
 
   describe 'Album::search' do
+    # Keys generated specifically for the tests. Should be removed in the future
+    let(:client_id) { '5ac1cda2ad354aeaa1ad2693d33bb98c' }
+    let(:client_secret) { '155fc038a85840679b55a1822ef36b9b' }
+
+    before(:each) do
+      authenticate_client
+    end
+
     it 'should search for the right albums' do
       albums = VCR.use_cassette('album:search:AM') do
         RSpotify::Album.search('AM')
       end
       expect(albums)             .to be_an Array
       expect(albums.size)        .to eq 20
-      expect(albums.total)       .to eq 8672
+      expect(albums.total)       .to eq 13866
       expect(albums.first)       .to be_an RSpotify::Album
-      expect(albums.map(&:name)) .to include('AM', 'Am I Wrong', 'A.M.', 'Melody AM')
+      expect(albums.map(&:name)) .to include('AM', 'GO:OD AM')
     end
 
     it 'should accept additional options' do
@@ -117,25 +143,55 @@ describe RSpotify::Album do
         RSpotify::Album.search('AM', limit: 10)
       end
       expect(albums.size)        .to eq 10
-      expect(albums.map(&:name)) .to include('AM', 'Am I Wrong')
+      expect(albums.map(&:name)) .to include('AM', 'GO:OD AM')
 
       albums = VCR.use_cassette('album:search:AM:offset:10') do
         RSpotify::Album.search('AM', offset: 10)
       end
       expect(albums.size)        .to eq 20
-      expect(albums.map(&:name)) .to include('Melody AM', 'I Am')
+      expect(albums.map(&:name)) .to include('3 A.M.', 'I Am')
 
       albums = VCR.use_cassette('album:search:AM:offset:10:limit:10') do
         RSpotify::Album.search('AM', limit: 10, offset: 10)
       end
       expect(albums.size)        .to eq 10
-      expect(albums.map(&:name)) .to include('Melody AM')
+      expect(albums.map(&:name)) .to include('I Am')
 
       albums = VCR.use_cassette('album:search:AM:market:ES') do
         RSpotify::Album.search('AM', market: 'ES')
       end
       ES_albums = albums.select { |a| a.available_markets.include?('ES') }
       expect(ES_albums.length).to eq(albums.length)
+    end
+  end
+
+  describe '#tracks' do
+    it 'should fetch more tracks' do
+      album = VCR.use_cassette('album:find:2js3lkzAjWpD656NK7ZaJX') do
+        RSpotify::Album.find('2js3lkzAjWpD656NK7ZaJX')
+      end
+
+      tracks = VCR.use_cassette('album:find:2js3lkzAjWpD656NK7ZaJX:tracks') do
+        album.tracks(offset: 50, limit: 50)
+      end
+
+      expect(tracks)            .to be_an Array
+      expect(tracks.size)       .to eq 19
+      expect(tracks.first.name) .to eq 'Acoustic Guitar'
+      expect(tracks.first.id)   .to eq '4l4IytuWNPZaN5EU80TTCO'
+    end
+
+    it "should find tracks available in the given market" do
+      album = VCR.use_cassette('album:find:2js3lkzAjWpD656NK7ZaJX') do
+        RSpotify::Album.find('2js3lkzAjWpD656NK7ZaJX')
+      end
+
+      tracks = VCR.use_cassette('album:find:2js3lkzAjWpD656NK7ZaJX:tracks:market:ES') do
+        album.tracks(offset: 50, limit: 50, market: 'ES')
+      end
+
+      expect(tracks.first.name) .to eq 'Acoustic Guitar'
+      expect(tracks.first.id)   .to eq '0wNeMTVk7bFbDj8YFIq0kY'
     end
   end
 
