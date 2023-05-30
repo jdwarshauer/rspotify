@@ -83,7 +83,7 @@ module RSpotify
       url = path.start_with?('http') ? path : API_URI + path
 
       url, query = *url.split('?')
-      url = CGI::escape(url)
+      url = URI::Parser.new.escape(url)
       url << "?#{query}" if query
 
       response = RestClient.send(verb, url, *params)
